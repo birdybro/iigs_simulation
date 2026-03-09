@@ -401,12 +401,15 @@ module iwm_woz (
                     motor_spinning <= 1'b0; 
                 end
             end else begin
-                // Motor off command - reset spinup state, start spindown
-                motor_spinup_done <= 1'b0;
+                // Motor off command - start spindown from current counter value.
+                // Keep motor_spinup_done set while motor is still spinning (counter > 0)
+                // so that re-enabling drive_on during spindown doesn't restart the full
+                // 300ms spinup delay. Real Disk II hardware maintains momentum.
                 if (motor_counter > 0) begin
                     motor_counter <= motor_counter - 1'd1;
                 end else begin
                     motor_spinning <= 1'b0;
+                    motor_spinup_done <= 1'b0;  // Only clear when motor fully stopped
                 end
             end
         end
