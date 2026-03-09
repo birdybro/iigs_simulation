@@ -149,10 +149,13 @@ module iwm_flux (
     // MAME async behavior: In async mode, completed bytes remain in m_data until overwritten by
     // the next completed byte. After the CPU performs an IWM register access while a valid byte
     // is present, MAME schedules m_data to clear after 14 internal cycles (~2µs at 7MHz).
-    // We track time at 14MHz, so this is 28 cycles.
-    // FIX: Increased to 56 cycles (4µs) because the IIgs ROM has gaps in its read loop
-    // (e.g., during sector header parsing) that exceed the 28-cycle deadline.
-    localparam [31:0] ASYNC_CLEAR_DELAY_14M = 32'd56;
+    // We track time at 14MHz, so MAME-equivalent value is 28 cycles.
+    //
+    // NOTE: Value is 28 (MAME-equivalent). Previously increased to 56 (4µs) to work around
+    // IIgs ROM read loop gaps, but that caused the opposite problem: stale bytes persisting
+    // too long, leading to double-reads from successive polling loops. The latch_hold mechanism
+    // (see latch_hold_cnt) provides the necessary extended hold time for ROM gaps instead.
+    localparam [31:0] ASYNC_CLEAR_DELAY_14M = 32'd28;
 
     // Async mode: mode bit 1 = 1 means async (MAME: is_sync() = !(mode & 0x02))
     wire       is_async = SW_MODE[1];
