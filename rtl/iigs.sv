@@ -2015,7 +2015,15 @@ video_timing video_timing(
 wire [22:0] video_addr;
 wire [7:0] video_data;
 // vbl_irq now handled internally in interrupt logic
-  wire scanline_irq;
+  // CDC: scanline_irq is a level signal from VGC (clk_vid domain)
+  wire scanline_irq_raw;
+  reg  scanline_irq_sync1 = 0, scanline_irq_sync2 = 0;
+  always @(posedge CLK_14M) begin
+      scanline_irq_sync1 <= scanline_irq_raw;
+      scanline_irq_sync2 <= scanline_irq_sync1;
+  end
+  wire scanline_irq = scanline_irq_sync2;
+
   wire vgc_vbl_toggle_raw;  // Toggle from VGC (clk_vid domain)
   // 2-stage synchronizer for CDC: clk_vid -> CLK_14M
   reg vbl_toggle_sync1 = 0, vbl_toggle_sync2 = 0, vbl_toggle_sync3 = 0;
@@ -2032,7 +2040,7 @@ vgc vgc(
         .CLK_14M(CLK_14M),
         .clk_vid(clk_vid),
         .ce_pix(ce_pix),
-        .scanline_irq(scanline_irq),
+        .scanline_irq(scanline_irq_raw),
 	.vbl_irq(vgc_vbl_toggle_raw),
         .H(H),
         .V(V),
