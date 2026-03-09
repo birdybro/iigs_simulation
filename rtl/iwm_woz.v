@@ -731,13 +731,16 @@ module iwm_woz (
                                               ((drive_sel == 0) ? flux_transition_525 : 1'b0);
 
     // Track which drive type's flux we're actually using (for window timing)
-    // CRITICAL: Window timing must match the SPINNING drive, not software DISK35 register!
-    // When a 3.5" drive is spinning, use 28-cycle windows even if ROM temporarily
-    // accesses slot 5 (5.25" mode). Otherwise byte decoding gets corrupted!
-    wire flux_is_35_inch = drive35_motor_spinning ? 1'b1 :
+    // When both 3.5" and 5.25" motors are spinning simultaneously (drive type switch),
+    // use the software-selected drive type (is_35_inch) to match what the CPU expects.
+    // When only one type is spinning, use that type regardless of software register.
+    // Fallback to software setting when no drive is spinning.
+    wire both_types_spinning = (drive35_motor_spinning || drive35_2_motor_spinning) && drive525_motor_spinning;
+    wire flux_is_35_inch = both_types_spinning ? is_35_inch :
+                          drive35_motor_spinning ? 1'b1 :
                           drive35_2_motor_spinning ? 1'b1 :
                           drive525_motor_spinning ? 1'b0 :
-                          is_35_inch;  // Fallback to software setting when no drive spinning
+                          is_35_inch;
 
     wire drive_active = flux_is_35_inch ? drive35_active : drive525_active;
     wire current_wp = flux_is_35_inch ? drive35_wp : drive525_wp;
