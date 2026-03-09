@@ -291,6 +291,11 @@ module iigs
   end
   wire                mega2_vbl = mega2_vbl_sync2;
 
+  // CDC: V counter is a multi-bit value from clk_vid domain.
+  // Register into CLK_14M for ADB key repeat timing (not cycle-critical).
+  reg [9:0] V_sync = 0;
+  always @(posedge CLK_14M) V_sync <= V;
+
   assign VPB=cpu_vpb;
   assign CXROM=INTCXROM;
   assign { bank, addr } = addr_bus;
@@ -2553,7 +2558,7 @@ wire ready_out;
           .ps2_key(ps2_key),
           .ps2_mouse(ps2_mouse),
           .selftest_override(selftest_override), // Self-test mode override
-          .vbl_count(V[8:0]),              // VBL counter for key repeat timing
+          .vbl_count(V_sync[8:0]),          // VBL counter for key repeat timing (CDC-synchronized)
           // Apple IIe compatibility outputs (replacing old keyboard module)
           .open_apple(adb_open_apple),     // Command key = Open Apple
           .closed_apple(adb_closed_apple), // Option key = Closed Apple
