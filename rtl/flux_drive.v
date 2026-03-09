@@ -1256,7 +1256,7 @@ module flux_drive (
                         end else if (flux_byte_counter <= 8'd1) begin
                             // Counter expired - generate transition if not a continuation byte.
                             // Do NOT suppress the first bit-cell here; that drops a bit and shifts byte alignment.
-                            if (!flux_is_continuation && drive_ready) begin
+                            if (!flux_is_continuation && drive_ready && flux_startup_delay == 6'd0) begin
                                 FLUX_TRANSITION <= 1'b1;
 `ifdef SIMULATION
                                     if (flux_count_debug < 110) begin
@@ -1372,7 +1372,7 @@ module flux_drive (
                         // weak_bit_active injects random flux in weak-bit areas (4+ consecutive zeros).
                         if (TRACK_LOADED && (TRACK_BIT_COUNT > 0) &&
                             (current_bit || (weak_bit_active && !current_bit && lfsr[3:0] < 4'd5)) &&
-                            drive_ready) begin
+                            drive_ready && flux_startup_delay == 6'd0) begin
                             FLUX_TRANSITION <= 1'b1;
 `ifdef SIMULATION
                             if (flux_count_debug < 50) begin
