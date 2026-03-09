@@ -712,14 +712,20 @@ module woz_floppy_controller #(
                                          pending_track_id <= {target_physical_track, ~pending_track_id[0]};
                                          load_side <= ~pending_track_id[0];
                                          blocks_processed <= 0;
+                                         // Pulse track_load_complete if this empty side matches stable_side
+                                         if (pending_track_id[0] == stable_side) begin
+                                             track_load_complete <= 1'b1;
+                                         end
                                          $display("WOZ_CTRL: Side %0d empty, checking side %0d for physical track %0d",
                                                   pending_track_id[0], ~pending_track_id[0], target_physical_track);
                                      end
                                      // Stay in S_SEEK_LOOKUP, will restart from step 0
                                  end else begin
+                                     // Final side (5.25" single-sided or 3.5" second side) is empty
                                      state <= S_IDLE;
                                      busy <= 0;
                                      loading_second_side <= 1'b0;
+                                     track_load_complete <= 1'b1;  // Notify flux_drive of track change
                                  end
 	                             end else if (is_woz_v1) begin
 	                                 // WOZ v1: compute track parameters directly from file position.
