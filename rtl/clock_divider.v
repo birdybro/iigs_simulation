@@ -91,11 +91,12 @@ end
 // MAME gates slow mode by (m_motors_active & (m_speed & 0x0f)), so we do the same:
 // - waitforC0XY tracks motor state unconditionally
 // - cyareg[N] bit gates whether that motor forces slow mode
-wire slow_request = (cyareg[7] == 1'b0) ||
-                   (waitforC0C8 && cyareg[0]) ||
-                   (waitforC0D8 && cyareg[1]) ||
-                   (waitforC0E8 && cyareg[2]) ||
-                   (waitforC0F8 && cyareg[3]);
+// Use registered cyareg_reg to shorten combinational path for FPGA timing
+wire slow_request = (cyareg_reg[7] == 1'b0) ||
+                   (waitforC0C8 && cyareg_reg[0]) ||
+                   (waitforC0D8 && cyareg_reg[1]) ||
+                   (waitforC0E8 && cyareg_reg[2]) ||
+                   (waitforC0F8 && cyareg_reg[3]);
 
 // I/O bank check for motor detection - banks that have I/O mirrored at $C0xx
 // Banks 00, 01, E0, E1, FC, FD, FE, FF all have I/O at $C0xx
