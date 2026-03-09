@@ -218,9 +218,11 @@ module woz_floppy_controller #(
     // Starting a load before settling causes thrashing restarts.
     // IMPORTANT: Use physical track (track_id[7:1]) NOT full track_id,
     // because SEL toggles (track_id[0]) shouldn't reset settling.
-    reg [6:0]  last_physical_track;   // Previous physical track for change detection
+    reg [7:0]  last_physical_track;   // Previous physical track for change detection
     reg [15:0] settle_counter;        // Cycles since last physical track change
-    localparam SETTLE_THRESHOLD = 16'd50000;  // ~3.5ms at 14MHz for head settle (longer to survive fast seeks)
+    localparam SETTLE_THRESHOLD_35 = 16'd50000;  // ~3.5ms at 14MHz for 3.5" head settle (survives fast seeks)
+    localparam SETTLE_THRESHOLD_525 = 16'd7000;  // ~0.5ms at 14MHz for 5.25" (real Disk II reads immediately)
+    wire [15:0] SETTLE_THRESHOLD = IS_35_INCH ? SETTLE_THRESHOLD_35 : SETTLE_THRESHOLD_525;
 
     reg [31:0] bit_count_side0;
     reg [31:0] bit_count_side1;
@@ -359,7 +361,7 @@ module woz_floppy_controller #(
             request_issued <= 1'b0;
             loading_second_side <= 1'b0;
             target_physical_track <= 7'h7F;
-            last_physical_track <= 7'h7F;
+            last_physical_track <= 8'hFF;
             settle_counter <= 16'd0;
             bit_count_side0 <= 32'd0;
             bit_count_side1 <= 32'd0;
@@ -587,16 +589,18 @@ module woz_floppy_controller #(
                     busy <= 0;
 
                     // Settling time: track how long PHYSICAL track has been stable
-                    // Use track_id[7:1] for 3.5" (physical track without side bit)
-                    // SEL toggles (side bit) should NOT reset settling
-                    if (track_id[7:1] != last_physical_track) begin
+                    // For 3.5": compare track_id[7:1] (physical track without side bit)
+                    //   SEL toggles (side bit) should NOT reset settling
+                    // For 5.25": compare full track_id (quarter-track TMAP index)
+                    //   Using [7:1] dropped the LSB, missing adjacent quarter-track steps
+                    if ((IS_35_INCH ? {1'b0, track_id[7:1]} : track_id) != last_physical_track) begin
                         // Physical track changed - reset settle counter
-                        last_physical_track <= track_id[7:1];
+                        last_physical_track <= IS_35_INCH ? {1'b0, track_id[7:1]} : track_id;
                         settle_counter <= 16'd0;
                         // Debug: show track change detected
                         if (settle_counter > 16'd100) begin
                             $display("WOZ_SETTLE: Physical track changed %0d -> %0d, resetting settle counter",
-                                     last_physical_track, track_id[7:1]);
+                                     last_physical_track, IS_35_INCH ? {1'b0, track_id[7:1]} : track_id);
                         end
                     end else if (settle_counter < SETTLE_THRESHOLD) begin
                         // Physical track stable but not yet settled
