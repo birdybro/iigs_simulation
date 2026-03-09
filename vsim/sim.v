@@ -204,7 +204,7 @@ iigs  iigs(
         .HDD_RAM_ADDR(sd_buff_addr),
         .HDD_RAM_DI(sd_buff_dout),
         .HDD_RAM_DO(hdd_ram_do),
-        .HDD_RAM_WE(sd_buff_wr & hdd_ack),
+        .HDD_RAM_WE(sd_buff_wr_sync2 & hdd_ack),
 
     // Disk ready to IWM (pad to 4 bits)
     // [0] = 5.25" WOZ controller, [1] = 0, [2] = 3.5" WOZ controller, [3] = 0
