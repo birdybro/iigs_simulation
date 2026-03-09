@@ -694,8 +694,12 @@ module flux_drive (
                         // Ignore SEL35 deassertions; the ROM clears $C031 between commands.
                         if (DISK_MOUNTED) begin
                             if (step_direction_slot[DRIVE_SELECT] == 1'b0) begin
-                                if (head_phase < max_phase)
+                                // Clamp to max_phase aligned to track boundary (multiple of 4).
+                                // Without clamp, head_phase 316 + 4 = 320 > max_phase 319.
+                                if (head_phase + 9'd4 <= max_phase[8:0])
                                     head_phase <= head_phase + 9'd4;
+                                else
+                                    head_phase <= max_phase[8:0] & ~9'd3;  // Align to track boundary
                             end else begin
                                 if (head_phase >= 9'd4)
                                     head_phase <= head_phase - 9'd4;
