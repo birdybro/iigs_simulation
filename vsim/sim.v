@@ -150,6 +150,32 @@ always @(posedge CLK_14M) begin
     woz3_stable_side_reg <= WOZ_TRACK3_STABLE_SIDE;
 end
 
+// CDC synchronizers for async external inputs affecting floppy controller
+// img_mounted, sd_ack, img_readonly, and img_size are asynchronous MiSTer framework
+// signals. Two-stage synchronization prevents metastability on FPGA.
+reg [9:0] img_mounted_sync1 = 0, img_mounted_sync2 = 0;
+reg [9:0] sd_ack_sync1 = 0, sd_ack_sync2 = 0;
+reg       img_readonly_sync1 = 0, img_readonly_sync2 = 0;
+reg [63:0] img_size_sync1 = 0, img_size_sync2 = 0;
+reg       sd_buff_wr_sync1 = 0, sd_buff_wr_sync2 = 0;
+
+always @(posedge CLK_14M) begin
+    img_mounted_sync1 <= img_mounted;
+    img_mounted_sync2 <= img_mounted_sync1;
+
+    sd_ack_sync1 <= sd_ack;
+    sd_ack_sync2 <= sd_ack_sync1;
+
+    img_readonly_sync1 <= img_readonly;
+    img_readonly_sync2 <= img_readonly_sync1;
+
+    img_size_sync1 <= img_size;
+    img_size_sync2 <= img_size_sync1;
+
+    sd_buff_wr_sync1 <= sd_buff_wr;
+    sd_buff_wr_sync2 <= sd_buff_wr_sync1;
+end
+
 wire clk_sys=CLK_14M;
 iigs  iigs(
         .reset(reset),
@@ -336,8 +362,8 @@ assign sd_wr[3] = sd_wr_hd & (hdd_active_unit == 1'b1);
 // sd_wr[4] driven by woz_ctrl_525
 // sd_wr[5] driven by woz_ctrl
 
-// Select the ack for the active unit
-wire hdd_ack = (hdd_active_unit == 1'b0) ? sd_ack[1] : sd_ack[3];
+// Select the ack for the active unit (CDC-synchronized)
+wire hdd_ack = (hdd_active_unit == 1'b0) ? sd_ack_sync2[1] : sd_ack_sync2[3];
 
 // HDD RAM output - shared buffer routed to both HDD unit indices
 wire [7:0] hdd_ram_do;
@@ -378,13 +404,14 @@ always @(posedge clk_sys) begin
         end
 
         // Handle HDD unit mounts (2 units mapped to img_mounted indices 1, 3)
-        if (img_mounted[1]) begin
-                hdd_mounted[0] <= img_size != 0;
-                hdd_protect[0] <= img_readonly;
+        // Uses CDC-synchronized signals
+        if (img_mounted_sync2[1]) begin
+                hdd_mounted[0] <= img_size_sync2 != 0;
+                hdd_protect[0] <= img_readonly_sync2;
         end
-        if (img_mounted[3]) begin
-                hdd_mounted[1] <= img_size != 0;
-                hdd_protect[1] <= img_readonly;
+        if (img_mounted_sync2[3]) begin
+                hdd_mounted[1] <= img_size_sync2 != 0;
+                hdd_protect[1] <= img_readonly_sync2;
         end
 
         if(reset) begin
@@ -463,25 +490,26 @@ wire        woz_ctrl_track_load_complete;  // Pulses when track load finishes
 wire [31:0] woz_ctrl_flux_total_ticks;
 
 // Mount detection for WOZ controller (index 5)
+// Uses CDC-synchronized img_mounted_sync2 and img_size_sync2
 reg         img_mounted5_d = 0;
 reg         woz_ctrl_mount = 0;
 reg         woz_ctrl_remount_pending = 0;
 reg         woz_ctrl_change = 0;
 
 always @(posedge clk_sys) begin
-    img_mounted5_d <= img_mounted[5];
-    // Detect rising edge of img_mounted[5]
-    if (~img_mounted5_d & img_mounted[5]) begin
+    img_mounted5_d <= img_mounted_sync2[5];
+    // Detect rising edge of img_mounted[5] (synchronized)
+    if (~img_mounted5_d & img_mounted_sync2[5]) begin
         if (woz_ctrl_mount) begin
             // Already mounted: force unmount first, then remount next cycle
             woz_ctrl_mount <= 0;
-            woz_ctrl_remount_pending <= (img_size != 0);
+            woz_ctrl_remount_pending <= (img_size_sync2 != 0);
         end else begin
-            woz_ctrl_mount  <= (img_size != 0);
+            woz_ctrl_mount  <= (img_size_sync2 != 0);
         end
         woz_ctrl_change <= ~woz_ctrl_change;
 `ifdef SIMULATION
-        $display("WOZ_CTRL: Mount detected for index 5 (size=%0d, remount=%0d)", img_size, woz_ctrl_mount);
+        $display("WOZ_CTRL: Mount detected for index 5 (size=%0d, remount=%0d)", img_size_sync2, woz_ctrl_mount);
 `endif
     end else if (woz_ctrl_remount_pending) begin
         // One cycle after unmount: complete the remount
@@ -501,16 +529,16 @@ woz_floppy_controller #(
     .sd_lba(sd_lba[5]),
     .sd_rd(sd_rd[5]),
     .sd_wr(sd_wr[5]),
-    .sd_ack(sd_ack[5]),
+    .sd_ack(sd_ack_sync2[5]),
     .sd_buff_addr(sd_buff_addr),
     .sd_buff_dout(sd_buff_dout),
     .sd_buff_din(sd_buff_din[5]),
-    .sd_buff_wr(sd_buff_wr),
+    .sd_buff_wr(sd_buff_wr_sync2),
 
     // Disk Status
     .img_mounted(woz_ctrl_mount),
-    .img_readonly(img_readonly),
-    .img_size(img_size),
+    .img_readonly(img_readonly_sync2),
+    .img_size(img_size_sync2),
 
     // Drive Interface - use immediate track_id for correct bit_count timing
     // The woz_floppy_controller needs immediate track_id for position calculations.
@@ -567,21 +595,22 @@ wire [31:0] woz_ctrl_525_flux_total_ticks;
 wire        woz_525_type_mismatch;
 
 // Mount detection for 5.25" WOZ controller (index 4)
+// Uses CDC-synchronized img_mounted_sync2 and img_size_sync2
 reg         img_mounted4_d = 0;
 reg         woz_ctrl_525_mount = 0;
 reg         woz_ctrl_525_remount_pending = 0;
 
 always @(posedge clk_sys) begin
-    img_mounted4_d <= img_mounted[4];
-    if (~img_mounted4_d & img_mounted[4]) begin
+    img_mounted4_d <= img_mounted_sync2[4];
+    if (~img_mounted4_d & img_mounted_sync2[4]) begin
         if (woz_ctrl_525_mount) begin
             woz_ctrl_525_mount <= 0;
-            woz_ctrl_525_remount_pending <= (img_size != 0);
+            woz_ctrl_525_remount_pending <= (img_size_sync2 != 0);
         end else begin
-            woz_ctrl_525_mount <= (img_size != 0);
+            woz_ctrl_525_mount <= (img_size_sync2 != 0);
         end
 `ifdef SIMULATION
-        $display("WOZ_CTRL_525: Mount detected for index 4 (size=%0d, remount=%0d)", img_size, woz_ctrl_525_mount);
+        $display("WOZ_CTRL_525: Mount detected for index 4 (size=%0d, remount=%0d)", img_size_sync2, woz_ctrl_525_mount);
 `endif
     end else if (woz_ctrl_525_remount_pending) begin
         woz_ctrl_525_mount <= 1;
@@ -599,16 +628,16 @@ woz_floppy_controller #(
     .sd_lba(sd_lba[4]),
     .sd_rd(sd_rd[4]),
     .sd_wr(sd_wr[4]),
-    .sd_ack(sd_ack[4]),
+    .sd_ack(sd_ack_sync2[4]),
     .sd_buff_addr(sd_buff_addr),
     .sd_buff_dout(sd_buff_dout),
     .sd_buff_din(sd_buff_din[4]),
-    .sd_buff_wr(sd_buff_wr),
+    .sd_buff_wr(sd_buff_wr_sync2),
 
     // Disk Status
     .img_mounted(woz_ctrl_525_mount),
-    .img_readonly(img_readonly),
-    .img_size(img_size),
+    .img_readonly(img_readonly_sync2),
+    .img_size(img_size_sync2),
 
     // Drive Interface
     .track_id({WOZ_TRACK1[5:0], 2'b00}),  // Full track * 4 = quarter-track TMAP index for 5.25"
