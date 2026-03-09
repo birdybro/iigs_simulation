@@ -576,8 +576,12 @@ module iwm_flux (
                          DISK_BIT_POSITION, rw_state, window_counter, full_window_frac, flux_seen);
                 flux_edge_log_count <= flux_edge_log_count + 1'd1;
             end
+`endif
 
             // Latch mode hold counter (8 bit times after a completed byte).
+            // CRITICAL: This must run in both simulation and synthesis. Previously
+            // gated by ifdef SIMULATION, causing latch_hold_cnt to never decrement
+            // on FPGA, which blocked the async_clear mechanism.
             if (!latch_mode) begin
                 latch_hold_cnt <= 4'd0;
             end else if ((shift_edge0_now || shift_edge1_now) && latch_hold_cnt != 4'd0) begin
@@ -590,7 +594,6 @@ module iwm_flux (
                 end
 `endif
             end
-`endif
 
             // Latch flux edges that arrive in EDGE_1 so they can be applied to the next cell.
             // Do not latch EDGE_0 edges (they are handled immediately), and avoid carrying
