@@ -296,6 +296,15 @@ module iigs
   reg [9:0] V_sync = 0;
   always @(posedge CLK_14M) V_sync <= V;
 
+  // CDC: timestamp is a 33-bit async external value that changes ~1Hz.
+  // Register into CLK_14M to prevent bit-tearing on the multi-bit comparison
+  // in prtc.v (timestamp_prev != timestamp[31:0]).
+  reg [32:0] timestamp_sync1 = 0, timestamp_sync2 = 0;
+  always @(posedge CLK_14M) begin
+      timestamp_sync1 <= timestamp;
+      timestamp_sync2 <= timestamp_sync1;
+  end
+
   // CDC: ps2_key and ps2_mouse are async external inputs from the MiSTer framework.
   // They use a toggle protocol (bit 10/24 toggles on each event, data in lower bits).
   // Synchronize the toggle bit with 2-stage sync; data bits are stable when toggle changes,
@@ -2585,7 +2594,7 @@ wire ready_out;
   prtc prtc(
             .CLK_14M(CLK_14M),
             .cen(phi2),
-            .timestamp(timestamp),
+            .timestamp(timestamp_sync2),
             .reset(reset),
             .addr(prtc_addr),
             .din(prtc_din),
