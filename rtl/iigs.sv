@@ -2008,7 +2008,15 @@ wire [22:0] video_addr;
 wire [7:0] video_data;
 // vbl_irq now handled internally in interrupt logic
   wire scanline_irq;
-  wire vgc_vbl_irq_pulse;
+  wire vgc_vbl_toggle_raw;  // Toggle from VGC (clk_vid domain)
+  // 2-stage synchronizer for CDC: clk_vid -> CLK_14M
+  reg vbl_toggle_sync1 = 0, vbl_toggle_sync2 = 0, vbl_toggle_sync3 = 0;
+  always @(posedge CLK_14M) begin
+      vbl_toggle_sync1 <= vgc_vbl_toggle_raw;
+      vbl_toggle_sync2 <= vbl_toggle_sync1;
+      vbl_toggle_sync3 <= vbl_toggle_sync2;
+  end
+  wire vgc_vbl_irq_pulse = vbl_toggle_sync2 ^ vbl_toggle_sync3;  // Edge detect on synchronized toggle
 
 
 vgc vgc(
@@ -2017,7 +2025,7 @@ vgc vgc(
         .clk_vid(clk_vid),
         .ce_pix(ce_pix),
         .scanline_irq(scanline_irq),
-	.vbl_irq(vgc_vbl_irq_pulse),
+	.vbl_irq(vgc_vbl_toggle_raw),
         .H(H),
         .V(V),
         .R(R),

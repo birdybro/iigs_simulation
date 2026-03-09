@@ -972,11 +972,17 @@ end
 
 
 // VBL Pulse Generation
-// Generate a single-cycle pulse at the start of the vertical blanking interval
-// to avoid IRQ storms.
+// Generate a toggle signal at the start of the vertical blanking interval.
+// The toggle (not a single-cycle pulse) is safe for CDC crossing to CLK_14M:
+// the destination domain synchronizes the toggle and edge-detects to recover the pulse.
 wire v_blank = (V >= BBE); // V=208 is scanline 192 (V-16), where VBL begins per TN.IIGS.040
 reg v_blank_d;
-always @(posedge clk_vid) if(ce_pix) v_blank_d <= v_blank;
-assign vbl_irq = v_blank & ~v_blank_d;
+reg vbl_toggle;
+always @(posedge clk_vid) if(ce_pix) begin
+    v_blank_d <= v_blank;
+    if (v_blank & ~v_blank_d)
+        vbl_toggle <= ~vbl_toggle;
+end
+assign vbl_irq = vbl_toggle;  // Now a toggle, not a pulse
 
 endmodule
