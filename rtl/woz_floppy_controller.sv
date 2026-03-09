@@ -1245,7 +1245,10 @@ module woz_floppy_controller #(
                              track_load_addr <= {blocks_processed[6:0], sd_buff_addr};
                              track_load_data <= sd_buff_dout;
                              track_load_we <= 1;
-                             if (pending_is_flux) begin
+                             // Only accumulate flux ticks for actual data bytes, not block padding.
+                             // trk_bit_count holds the flux data size in bytes; bytes beyond that
+                             // are block-alignment padding and would inflate the tick total.
+                             if (pending_is_flux && ({blocks_processed[6:0], sd_buff_addr} < trk_bit_count[15:0])) begin
                                  pending_flux_total_ticks <= pending_flux_total_ticks + sd_buff_dout;
                              end
                          end
