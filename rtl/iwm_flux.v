@@ -864,8 +864,6 @@ module iwm_flux (
                                             data_trace_count <= data_trace_count + 1'd1;
                                         end
                                     end
-                                    prolog_last2 <= prolog_last1;
-                                    prolog_last1 <= shifted_rsh;
                                     last_bc_byte <= shifted_rsh;
                                     last_bc_pos <= DISK_BIT_POSITION;
                                     last_bc_total <= last_bc_total + 1'd1;
@@ -1147,8 +1145,6 @@ module iwm_flux (
                                             data_trace_count <= data_trace_count + 1'd1;
                                         end
                                     end
-                                    prolog_last2 <= prolog_last1;
-                                    prolog_last1 <= shifted_rsh;
                                     last_bc_byte <= shifted_rsh;
                                     last_bc_pos <= DISK_BIT_POSITION;
                                     last_bc_total <= last_bc_total + 1'd1;
