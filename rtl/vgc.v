@@ -14,19 +14,42 @@ output reg [7:0] G,
 output reg [7:0] B,
 output [22:0] video_addr,
 input [7:0] video_data,
-input [7:0] TEXTCOLOR, // 7:4 text color 3:0 background
-input [3:0] BORDERCOLOR,
-input HIRES_MODE,
-input AN3,
-input STORE80,
-input ALTCHARSET,
-input EIGHTYCOL,
-input PAGE2,
-input TEXTG,
-input MIXG,
-input SHRG,
-input DHRG_MONO
+input [7:0] TEXTCOLOR_raw, // 7:4 text color 3:0 background
+input [3:0] BORDERCOLOR_raw,
+input HIRES_MODE_raw,
+input AN3_raw,
+input STORE80_raw,
+input ALTCHARSET_raw,
+input EIGHTYCOL_raw,
+input PAGE2_raw,
+input TEXTG_raw,
+input MIXG_raw,
+input SHRG_raw,
+input DHRG_MONO_raw
 );
+
+// CDC: Mode control signals are written by CPU in CLK_14M domain.
+// Register into clk_vid to prevent metastability. These change infrequently
+// (only on soft-switch writes), so 1 pixel of latency is negligible.
+// Local wires keep original names so all downstream logic is unchanged.
+reg [7:0] TEXTCOLOR;
+reg [3:0] BORDERCOLOR;
+reg HIRES_MODE, AN3, STORE80, ALTCHARSET, EIGHTYCOL;
+reg PAGE2, TEXTG, MIXG, SHRG, DHRG_MONO;
+always @(posedge clk_vid) begin
+    TEXTCOLOR   <= TEXTCOLOR_raw;
+    BORDERCOLOR <= BORDERCOLOR_raw;
+    HIRES_MODE  <= HIRES_MODE_raw;
+    AN3         <= AN3_raw;
+    STORE80     <= STORE80_raw;
+    ALTCHARSET  <= ALTCHARSET_raw;
+    EIGHTYCOL   <= EIGHTYCOL_raw;
+    PAGE2       <= PAGE2_raw;
+    TEXTG       <= TEXTG_raw;
+    MIXG        <= MIXG_raw;
+    SHRG        <= SHRG_raw;
+    DHRG_MONO   <= DHRG_MONO_raw;
+end
 
 // Counter values for the border boundaries
 

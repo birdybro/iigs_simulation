@@ -2076,18 +2076,18 @@ vgc vgc(
         .B(B),
         .video_addr(video_addr),
         .video_data(video_data),
-        .TEXTCOLOR(TEXTCOLOR),
-        .BORDERCOLOR(BORDERCOLOR),
-        .HIRES_MODE(HIRES_MODE),
-        .ALTCHARSET(ALTCHARSET),
-	.AN3(AN3),
-	.STORE80(STORE80),
-        .EIGHTYCOL(EIGHTYCOL),
-        .PAGE2(PAGE2),
-        .TEXTG(TEXTG),
-        .MIXG(MIXG),
-        .SHRG(NEWVIDEO[7]),
-        .DHRG_MONO(NEWVIDEO[5])
+        .TEXTCOLOR_raw(TEXTCOLOR),
+        .BORDERCOLOR_raw(BORDERCOLOR),
+        .HIRES_MODE_raw(HIRES_MODE),
+        .ALTCHARSET_raw(ALTCHARSET),
+	.AN3_raw(AN3),
+	.STORE80_raw(STORE80),
+        .EIGHTYCOL_raw(EIGHTYCOL),
+        .PAGE2_raw(PAGE2),
+        .TEXTG_raw(TEXTG),
+        .MIXG_raw(MIXG),
+        .SHRG_raw(NEWVIDEO[7]),
+        .DHRG_MONO_raw(NEWVIDEO[5])
 );
 
 
