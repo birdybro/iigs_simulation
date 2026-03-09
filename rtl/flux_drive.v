@@ -987,8 +987,6 @@ module flux_drive (
                 bit_timer <= bit_cell_base;  // Full bit cell time
                 bit_half_timer <= bit_half_base;
                 bit_cell_cycles_reg <= bit_cell_base;
-                bit_cell_cycles_reg <= bit_cell_base;
-                bit_cell_cycles_reg <= bit_cell_base;
                 bit_cell_frac <= 10'd0;
                 bit_half_frac <= 10'd0;
                 // skip_position_advance wire handles this automatically
