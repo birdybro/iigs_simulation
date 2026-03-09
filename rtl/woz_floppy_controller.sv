@@ -782,11 +782,11 @@ module woz_floppy_controller #(
                                                   target_physical_track, track_id[7:1]);
                                      end else begin
                                          loading_second_side <= 1'b1;
-                                         pending_track_id <= {target_physical_track, 1'b1};
-                                         load_side <= 1'b1;
+                                         pending_track_id <= {target_physical_track, ~pending_track_id[0]};
+                                         load_side <= ~pending_track_id[0];
                                          blocks_processed <= 0;
-                                         $display("WOZ_CTRL: Side 0 empty, checking side 1 for physical track %0d",
-                                                  target_physical_track);
+                                         $display("WOZ_CTRL: Side %0d empty, checking side %0d for physical track %0d",
+                                                  pending_track_id[0], ~pending_track_id[0], target_physical_track);
                                      end
                                      // Stay in S_SEEK_LOOKUP, will restart from step 0
                                  end else begin
