@@ -289,7 +289,12 @@ module flux_drive (
     // WOZ FLUX format encodes real 125ns tick counts between transitions.
     // Do NOT scale based on FLUX_TOTAL_TICKS - that caused timing mismatch
     // with iwm_flux.v's fixed 28-cycle (2µs) window timing.
-    // The track data may not fill a full 200ms rotation, which is fine.
+    //
+    // Trade-off: Tracks whose total tick count != 200ms (one 300RPM rotation)
+    // will wrap early (short) or late (long). The wrap at flux_byte_addr
+    // handles this gracefully for standard disks. Non-standard rotation speeds
+    // or unusual flux density may cause sector alignment drift across rotations.
+    // To fix properly, re-enable scaling with coordinated iwm_flux window adjustment.
     wire        flux_use_scaling = 1'b0;  // Disabled - use real 125ns timing
     wire [31:0] flux_phase_inc = 32'd1000;
     wire [31:0] flux_phase_mod = 32'd1790;
