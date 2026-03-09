@@ -430,85 +430,12 @@ module woz_floppy_controller #(
             end else begin
                 ready <= woz_valid && (state == S_IDLE) && (current_track_id_side0 == track_id);
             end
-            
-	            // Mount detection
-	            if (img_mounted && !prev_mounted) begin
-	                state <= S_DETECT;
-	                ready <= 0;
-	                busy <= 1;
-	                woz_valid <= 0;
-	                dirty <= 0;
-	                current_track_id_side0 <= 8'hFF;
-	                current_track_id_side1 <= 8'hFF;
-                bit_count_side0 <= 32'd0;
-                bit_count_side1 <= 32'd0;
-                flux_total_ticks_side0 <= 32'd0;
-                flux_total_ticks_side1 <= 32'd0;
-                pending_flux_total_ticks <= 32'd0;
-	                // We will load the requested track after parsing metadata.
-	                pending_track_id <= track_id;
-	                load_side <= track_id[0];
-	                loading_second_side <= 1'b0;
-	                target_physical_track <= track_id[7:1];
-	                track_load_side <= 1'b0;
-	                have_info <= 1'b0;
-	                have_tmap <= 1'b0;
-	                have_trks <= 1'b0;
-	                scan_blocks <= 16'd0;
-	                scan_skip_target <= 16'd0;
-	                scan_skip_active <= 1'b0;
-	                hdr_pos <= 4'd0;
-	                chunk_hdr_pos <= 3'd0;
-	                chunk_id <= 32'd0;
-	                chunk_size_acc <= 32'd0;
-	                chunk_left <= 32'd0;
-	                chunk_index <= 32'd0;
-	                info_version <= 8'd0;
-	                info_disk_type <= 8'd0;
-	                info_bit_timing <= 8'd0;
-	                info_flux_block <= 16'd0;
-	                have_flux <= 1'b0;
-	                pending_is_flux <= 1'b0;
-	                is_flux_side0 <= 1'b0;
-	                is_flux_side1 <= 1'b0;
-	                flux_size_side0 <= 32'd0;
-	                flux_size_side1 <= 32'd0;
-	                scan_failed <= 1'b0;
-	                is_woz_v1 <= 1'b0;
-	                trks_base_block <= 16'd0;
-	                trks_byte_offset <= 9'd0;
-	                v1_bit_count <= 16'd0;
-	            end
-	            // Unmount: drop validity immediately.
-	            if (!img_mounted && prev_mounted) begin
-	                woz_valid <= 1'b0;
-	                ready <= 1'b0;
-	                busy <= 1'b0;
-	                dirty <= 1'b0;
-	                current_track_id_side0 <= 8'hFF;
-	                current_track_id_side1 <= 8'hFF;
-                bit_count_side0 <= 32'd0;
-                bit_count_side1 <= 32'd0;
-                flux_total_ticks_side0 <= 32'd0;
-                flux_total_ticks_side1 <= 32'd0;
-                pending_flux_total_ticks <= 32'd0;
-                track_load_side <= 1'b0;
-	                have_info <= 1'b0;
-	                have_tmap <= 1'b0;
-	                have_trks <= 1'b0;
-	                have_flux <= 1'b0;
-	                is_flux_side0 <= 1'b0;
-	                is_flux_side1 <= 1'b0;
-	                flux_size_side0 <= 32'd0;
-	                flux_size_side1 <= 32'd0;
-	                state <= S_INIT;
-	                scan_failed <= 1'b0;
-	            end
+
 	            prev_mounted <= img_mounted;
-            
+
             // Set dirty flag on bit writes
             if (bit_we) dirty <= 1;
-            
+
             // State Machine
             case (state)
 	                S_INIT: begin
@@ -1264,6 +1191,81 @@ module woz_floppy_controller #(
                     end
                 end
             end
+
+            // Mount/unmount detection — placed AFTER case statement and DMA logic
+            // so that the non-blocking assignments here take priority (last NBA wins).
+            // Previously, these were before the case statement, allowing S_IDLE's
+            // state <= S_SEEK_LOOKUP to override mount's state <= S_DETECT on disk swap.
+	            if (img_mounted && !prev_mounted) begin
+	                state <= S_DETECT;
+	                ready <= 0;
+	                busy <= 1;
+	                woz_valid <= 0;
+	                dirty <= 0;
+	                current_track_id_side0 <= 8'hFF;
+	                current_track_id_side1 <= 8'hFF;
+                    bit_count_side0 <= 32'd0;
+                    bit_count_side1 <= 32'd0;
+                    flux_total_ticks_side0 <= 32'd0;
+                    flux_total_ticks_side1 <= 32'd0;
+                    pending_flux_total_ticks <= 32'd0;
+	                pending_track_id <= track_id;
+	                load_side <= track_id[0];
+	                loading_second_side <= 1'b0;
+	                target_physical_track <= track_id[7:1];
+	                track_load_side <= 1'b0;
+	                have_info <= 1'b0;
+	                have_tmap <= 1'b0;
+	                have_trks <= 1'b0;
+	                scan_blocks <= 16'd0;
+	                scan_skip_target <= 16'd0;
+	                scan_skip_active <= 1'b0;
+	                hdr_pos <= 4'd0;
+	                chunk_hdr_pos <= 3'd0;
+	                chunk_id <= 32'd0;
+	                chunk_size_acc <= 32'd0;
+	                chunk_left <= 32'd0;
+	                chunk_index <= 32'd0;
+	                info_version <= 8'd0;
+	                info_disk_type <= 8'd0;
+	                info_bit_timing <= 8'd0;
+	                info_flux_block <= 16'd0;
+	                have_flux <= 1'b0;
+	                pending_is_flux <= 1'b0;
+	                is_flux_side0 <= 1'b0;
+	                is_flux_side1 <= 1'b0;
+	                flux_size_side0 <= 32'd0;
+	                flux_size_side1 <= 32'd0;
+	                scan_failed <= 1'b0;
+	                is_woz_v1 <= 1'b0;
+	                trks_base_block <= 16'd0;
+	                trks_byte_offset <= 9'd0;
+	                v1_bit_count <= 16'd0;
+	            end
+	            if (!img_mounted && prev_mounted) begin
+	                woz_valid <= 1'b0;
+	                ready <= 1'b0;
+	                busy <= 1'b0;
+	                dirty <= 1'b0;
+	                current_track_id_side0 <= 8'hFF;
+	                current_track_id_side1 <= 8'hFF;
+                    bit_count_side0 <= 32'd0;
+                    bit_count_side1 <= 32'd0;
+                    flux_total_ticks_side0 <= 32'd0;
+                    flux_total_ticks_side1 <= 32'd0;
+                    pending_flux_total_ticks <= 32'd0;
+                    track_load_side <= 1'b0;
+	                have_info <= 1'b0;
+	                have_tmap <= 1'b0;
+	                have_trks <= 1'b0;
+	                have_flux <= 1'b0;
+	                is_flux_side0 <= 1'b0;
+	                is_flux_side1 <= 1'b0;
+	                flux_size_side0 <= 32'd0;
+	                flux_size_side1 <= 32'd0;
+	                state <= S_INIT;
+	                scan_failed <= 1'b0;
+	            end
         end
     end
 
