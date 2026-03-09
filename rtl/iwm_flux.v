@@ -1028,7 +1028,13 @@ module iwm_flux (
                                         dbg_motor_started <= 1'b0;
                                     end
 `endif
-                                    clear_rsh_pending <= 1'b1;
+                                    // Only clear m_rsh in sync mode. In latch mode, m_rsh is
+                                    // deliberately preserved (line 970-971 sets latch_hold_cnt=8).
+                                    // Unconditional clear_rsh_pending here was defeating that intent,
+                                    // clearing m_rsh after just 1 cycle instead of holding for 8 bit-times.
+                                    if (!latch_mode) begin
+                                        clear_rsh_pending <= 1'b1;
+                                    end
                             end
                             load_full_window();
                         end else begin
@@ -1282,7 +1288,9 @@ module iwm_flux (
                                         end
                                     end
 `endif
-                                    clear_rsh_pending <= 1'b1;
+                                    if (!latch_mode) begin
+                                        clear_rsh_pending <= 1'b1;
+                                    end
                             end
                             rw_state <= SR_WINDOW_EDGE_0;
                             load_full_window();
