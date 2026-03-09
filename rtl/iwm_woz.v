@@ -500,7 +500,10 @@ module iwm_woz (
         .FLUX_TOTAL_TICKS(WOZ_TRACK3_FLUX_TOTAL_TICKS),
         .SD_TRACK_REQ(),
         .SD_TRACK_STROBE(),
-        .SD_TRACK_ACK(1'b0)
+        .SD_TRACK_ACK(1'b0),
+        // Chunk streaming: 64KB BRAM holds full track, report current chunk as loaded
+        .CHUNK_LOADED(drive35_bram_addr[15:14]),
+        .CHUNK_LOADING(1'b0)
     );
 
     // Stable side for data reads:
@@ -640,7 +643,10 @@ module iwm_woz (
         .FLUX_TOTAL_TICKS(32'd0),
         .SD_TRACK_REQ(),
         .SD_TRACK_STROBE(),
-        .SD_TRACK_ACK(1'b0)
+        .SD_TRACK_ACK(1'b0),
+        // drive35_2 has no BRAM connected, chunk ports unused
+        .CHUNK_LOADED(2'b00),
+        .CHUNK_LOADING(1'b0)
     );
 
     //=========================================================================
@@ -704,7 +710,10 @@ module iwm_woz (
         .FLUX_TOTAL_TICKS(WOZ_TRACK1_FLUX_TOTAL_TICKS),
         .SD_TRACK_REQ(),
         .SD_TRACK_STROBE(),
-        .SD_TRACK_ACK(1'b0)
+        .SD_TRACK_ACK(1'b0),
+        // Chunk streaming: 32KB BRAM holds full track, report current chunk as loaded
+        .CHUNK_LOADED(drive525_bram_addr[15:14]),
+        .CHUNK_LOADING(1'b0)
     );
 
     assign WOZ_TRACK1 = drive525_track;
