@@ -1011,8 +1011,15 @@ module woz_floppy_controller #(
                                     load_side <= ~pending_track_id[0];
                                     state <= S_SEEK_LOOKUP;
                                     blocks_processed <= 0;
-                                    $display("WOZ_CTRL: First side complete, starting other side load for physical track %0d",
-                                             target_physical_track);
+                                    // Pulse track_load_complete if the just-loaded side matches the
+                                    // side the drive is actively reading. This lets flux_drive update
+                                    // its track parameters immediately instead of waiting for both
+                                    // sides to finish.
+                                    if (pending_track_id[0] == stable_side) begin
+                                        track_load_complete <= 1'b1;
+                                    end
+                                    $display("WOZ_CTRL: First side complete (side%0d), starting other side load for physical track %0d",
+                                             pending_track_id[0], target_physical_track);
                                 end
                             end else begin
                                 // 5.25" single-sided OR 3.5" side 1 complete
