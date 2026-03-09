@@ -312,9 +312,15 @@ module flux_drive (
     wire [16:0] pos_minus_1x = bit_position - track_bit_count_17;
     wire        pos_exceeds_2x = (pos_minus_1x >= track_bit_count_17) && (TRACK_BIT_COUNT > 0);
     wire [16:0] pos_minus_2x = pos_minus_1x - track_bit_count_17;
-    wire [16:0] effective_bit_position = pos_exceeds_1x ?
-                                         (pos_exceeds_2x ? pos_minus_2x : pos_minus_1x) :
-                                         bit_position;
+    wire [16:0] raw_effective_pos = pos_exceeds_1x ?
+                                    (pos_exceeds_2x ? pos_minus_2x : pos_minus_1x) :
+                                    bit_position;
+    // Safety clamp: if position still exceeds track size after 2x subtraction
+    // (e.g., side switch halved track size while position was near end), clamp
+    // to track_bit_count - 1 to prevent out-of-range BRAM addressing.
+    wire [16:0] max_valid_pos = (TRACK_BIT_COUNT > 0) ? (track_bit_count_17 - 17'd1) : 17'd0;
+    wire [16:0] effective_bit_position = (raw_effective_pos >= track_bit_count_17 && TRACK_BIT_COUNT > 0) ?
+                                          max_valid_pos : raw_effective_pos;
 
     task automatic load_bit_timers;
         reg [9:0] tmp;
