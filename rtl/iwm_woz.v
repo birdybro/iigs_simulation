@@ -872,10 +872,8 @@ module iwm_woz (
 
     wire [7:0] iwm_data_out;
 
-    // Disk mounted status
-    wire disk_mounted = DISK_READY[2] ? 1'b1 :
-                       DISK_READY[0] ? 1'b1 :
-                       (is_35_inch ? DISK_READY[2] : DISK_READY[0]);
+    // Disk mounted status — any drive with a disk image loaded
+    wire disk_mounted = DISK_READY[2] || DISK_READY[0];
 
     // Muxed bit position for debug logging and flux decoder
     // Use flux_is_35_inch (based on which motor is spinning) instead of is_35_inch (register)
