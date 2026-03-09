@@ -296,6 +296,19 @@ module iigs
   reg [9:0] V_sync = 0;
   always @(posedge CLK_14M) V_sync <= V;
 
+  // CDC: ps2_key and ps2_mouse are async external inputs from the MiSTer framework.
+  // They use a toggle protocol (bit 10/24 toggles on each event, data in lower bits).
+  // Synchronize the toggle bit with 2-stage sync; data bits are stable when toggle changes,
+  // so a single register stage for the full bus is sufficient.
+  reg [10:0] ps2_key_sync1 = 0, ps2_key_sync2 = 0;
+  reg [24:0] ps2_mouse_sync1 = 0, ps2_mouse_sync2 = 0;
+  always @(posedge CLK_14M) begin
+      ps2_key_sync1 <= ps2_key;
+      ps2_key_sync2 <= ps2_key_sync1;
+      ps2_mouse_sync1 <= ps2_mouse;
+      ps2_mouse_sync2 <= ps2_mouse_sync1;
+  end
+
   assign VPB=cpu_vpb;
   assign CXROM=INTCXROM;
   assign { bank, addr } = addr_bus;
@@ -2555,8 +2568,8 @@ wire ready_out;
           .irq(/* unused - ADB IRQ handled via registers */),
           .strobe(adb_strobe_mux),
           .capslock(adb_capslock),
-          .ps2_key(ps2_key),
-          .ps2_mouse(ps2_mouse),
+          .ps2_key(ps2_key_sync2),
+          .ps2_mouse(ps2_mouse_sync2),
           .selftest_override(selftest_override), // Self-test mode override
           .vbl_count(V_sync[8:0]),          // VBL counter for key repeat timing (CDC-synchronized)
           // Apple IIe compatibility outputs (replacing old keyboard module)
