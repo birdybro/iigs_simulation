@@ -244,8 +244,9 @@ module iwm_woz (
             // Robust mode register capture:
             // The IIgs ROM expects a write to $C0EF (odd, Q7=1) while the IWM is idle to latch the
             // mode bits, then immediately reads back via $C0EE. Capture the mode write when the
-            // sampled bus indicates a write to offset $F. Repeated captures are harmless.
-            if (cpu_access_edge && bus_wr && !iwm_active && (bus_addr == 4'hF)) begin
+            // sampled bus indicates a write to offset $F with Q6 already set. Per MAME, mode
+            // register write requires Q6=1, Q7=1. The Q7=1 is implicit from bus_addr==4'hF.
+            if (cpu_access_edge && bus_wr && !iwm_active && (bus_addr == 4'hF) && write_mode_q6) begin
                 mode_reg <= {3'b000, bus_din[4:0]};
 `ifdef SIMULATION
                 $display("IWM_WOZ: MODE_REG <= %02h (robust wr, D_IN=%02h A=%01h)", {3'b000, bus_din[4:0]}, bus_din, bus_addr);
