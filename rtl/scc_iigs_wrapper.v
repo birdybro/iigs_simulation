@@ -45,7 +45,22 @@ module scc_iigs_wrapper
 );
 
 
-// Clock divider: 14.32MHz -> ~1.79MHz (divide by 8) 
+// CDC: Synchronize async serial inputs (rxd, cts) into clk_14m domain.
+// These signals originate from external UART hardware or host framework.
+reg rxd_a_sync1 = 1, rxd_a_sync2 = 1;  // Idle = mark = 1
+reg rxd_b_sync1 = 1, rxd_b_sync2 = 1;
+reg cts_a_sync1 = 0, cts_a_sync2 = 0;
+reg cts_b_sync1 = 0, cts_b_sync2 = 0;
+reg dsr_a_sync1 = 0, dsr_a_sync2 = 0;
+always @(posedge clk_14m) begin
+    rxd_a_sync1 <= rxd_a;  rxd_a_sync2 <= rxd_a_sync1;
+    rxd_b_sync1 <= rxd_b;  rxd_b_sync2 <= rxd_b_sync1;
+    cts_a_sync1 <= cts_a;  cts_a_sync2 <= cts_a_sync1;
+    cts_b_sync1 <= cts_b;  cts_b_sync2 <= cts_b_sync1;
+    dsr_a_sync1 <= dsr_a;  dsr_a_sync2 <= dsr_a_sync1;
+end
+
+// Clock divider: 14.32MHz -> ~1.79MHz (divide by 8)
 // This matches the Apple IIgs PCLK timing used by SCC and DOC systems
 // Based on software emulator analysis: PCLK = 14.32MHz/8 ≈ 1.79MHz
 reg [2:0] clk_div;
@@ -124,14 +139,14 @@ scc scc_inst (
 `endif
     ._irq(scc_internal_irq_n),          // Internal SCC interrupt
     
-    // Serial connections - Channel A
-    .rxd(rxd_a),                        // Channel A receive
+    // Serial connections - Channel A (CDC-synchronized)
+    .rxd(rxd_a_sync2),                  // Channel A receive
     .txd(txd_a),                        // Channel A transmit
-    .cts(cts_a),                        // Clear to send from external device
+    .cts(cts_a_sync2),                  // Clear to send from external device
     .rts(rts_a),                        // Request to send to external device
 
-    // Serial connections - Channel B (for external loopback testing)
-    .rxd_b(rxd_b),                      // Channel B receive
+    // Serial connections - Channel B (CDC-synchronized)
+    .rxd_b(rxd_b_sync2),               // Channel B receive
     .txd_b_out(txd_b),                  // Channel B transmit
 
     // DCD inputs (used for mouse on real IIgs, stubbed high = carrier detect)
