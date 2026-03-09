@@ -281,7 +281,15 @@ module iigs
   logic               lcram2_sel;
 
   // Legacy Mega II VBL status bit for $C019
-  wire                mega2_vbl;
+  // CDC: mega2_vbl is generated in clk_vid domain by video_timing,
+  // synchronize into CLK_14M before CPU reads at $C019.
+  wire                mega2_vbl_raw;
+  reg                 mega2_vbl_sync1 = 0, mega2_vbl_sync2 = 0;
+  always @(posedge CLK_14M) begin
+      mega2_vbl_sync1 <= mega2_vbl_raw;
+      mega2_vbl_sync2 <= mega2_vbl_sync1;
+  end
+  wire                mega2_vbl = mega2_vbl_sync2;
 
   assign VPB=cpu_vpb;
   assign CXROM=INTCXROM;
@@ -1996,7 +2004,7 @@ video_timing video_timing(
 .vsync(VS),
 .hblank(HBlank),
 .vblank(VBlank),
-.mega2_vbl(mega2_vbl),
+.mega2_vbl(mega2_vbl_raw),
 .hpos(H),
 .vpos(V)
 );
