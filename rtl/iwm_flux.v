@@ -2002,19 +2002,18 @@ module iwm_flux (
             if (!MOTOR_SPINNING || !DISK_READY) begin
                 sec_state <= SEC_IDLE;
             end
+
+            // Periodic statistics for sector tracking
+            // Moved into this always block to avoid multi-driver conflict on sec_log_count
+            if (debug_cycle[24:0] == 25'h0 && debug_cycle > 0 && MOTOR_ACTIVE) begin
+                if (sec_log_count < SEC_LOG_MAX) begin
+                    sec_log_count <= sec_log_count + 1'd1;
+                    $display("SECTOR: *** STATS *** addr_ok=%0d addr_fail=%0d data_complete=%0d prologue_miss=%0d",
+                             sec_addr_ok_count, sec_addr_fail_count, sec_data_count_total, sec_prologue_miss_count);
+                end
+            end
         end
     end
-
-	    // Periodic statistics for sector tracking
-	    always @(posedge CLK_14M) begin
-	        if (debug_cycle[24:0] == 25'h0 && debug_cycle > 0 && MOTOR_ACTIVE) begin
-	            if (sec_log_count < SEC_LOG_MAX) begin
-	                sec_log_count <= sec_log_count + 1'd1;
-	                $display("SECTOR: *** STATS *** addr_ok=%0d addr_fail=%0d data_complete=%0d prologue_miss=%0d",
-	                         sec_addr_ok_count, sec_addr_fail_count, sec_data_count_total, sec_prologue_miss_count);
-	            end
-	        end
-	    end
 `endif
 
 endmodule
