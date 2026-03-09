@@ -268,8 +268,9 @@ module flux_drive (
     wire sony_cmd_strobe = IS_35_INCH && (DRIVE_SELECT == DRIVE_SLOT) && lstrb && !prev_lstrb;
 
     // Immediate direction reflects a same-cycle strobe of 0/1.
-    assign step_direction_immediate = (sony_cmd_strobe && sony_cmd == 4'h0) ? 1'b0 :
-                                      (sony_cmd_strobe && sony_cmd == 4'h1) ? 1'b1 :
+    // Use sony_ctl (not sony_cmd) to avoid matching SEL-bearing variants.
+    assign step_direction_immediate = (sony_cmd_strobe && sony_ctl == 4'h0) ? 1'b0 :
+                                      (sony_cmd_strobe && sony_ctl == 4'h1) ? 1'b1 :
                                       step_direction_registered;
 
     //=========================================================================
@@ -659,7 +660,10 @@ module flux_drive (
                 $display("FLUX_DRIVE[%0d]: sony_cmd_strobe! sony_ctl=%01x SEL35=%0d DISK_MOUNTED=%0d",
                          DRIVE_ID, sony_ctl, SEL35, DISK_MOUNTED);
 `endif
-                case (sony_cmd)
+                // Use sony_ctl (includes SEL bit) for full command decode.
+                // Previously used sony_cmd (SEL stripped), which caused overlaps:
+                // e.g., eject-reset (ctl=0x3) also fired direction-outward (cmd=0x1).
+                case (sony_ctl)
                     4'h0: begin
                         // Direction inward (toward higher tracks) - ROM dirinadr=0
                         step_direction_slot[DRIVE_SELECT] <= 1'b0;
@@ -673,6 +677,15 @@ module flux_drive (
                         step_direction_slot[DRIVE_SELECT] <= 1'b1;
 `ifdef SIMULATION
                         $display("FLUX_DRIVE[%0d]: cmd step dir -1 (toward track 0) t=%0t", DRIVE_ID, $time);
+`endif
+                    end
+
+                    4'h3: begin
+                        // Eject reset / disk-switched clear (ejct_reset=3, SEL=1)
+                        // MAME: m_dskchg = 1 (acknowledged)
+                        disk_switched <= 1'b1;
+`ifdef SIMULATION
+                        $display("FLUX_DRIVE[%0d]: cmd eject reset (disk change clear)", DRIVE_ID);
 `endif
                     end
 
@@ -730,28 +743,20 @@ module flux_drive (
 `endif
                     end
 
+                    4'h7: begin
+                        // Start eject (SEL=1): treat as disk removed (best-effort)
+                        // Real hardware would unload; in sim we don't hot-unmount here.
+`ifdef SIMULATION
+                        $display("FLUX_DRIVE[%0d]: cmd eject on (not implemented)", DRIVE_ID);
+`endif
+                    end
+
                     default: begin
 `ifdef SIMULATION
                         $display("FLUX_DRIVE[%0d]: cmd %01x (unhandled)", DRIVE_ID, sony_ctl);
 `endif
                     end
                 endcase
-                // SEL-bearing variants that use the same CA opcode but different SEL bit.
-                if (sony_ctl == 4'h3) begin
-                    // Eject reset / disk-switched clear used during CONFIGURE (ejct_reset=3)
-                    // MAME: m_dskchg = 1 (acknowledged)
-                    disk_switched <= 1'b1;
-`ifdef SIMULATION
-                    $display("FLUX_DRIVE[%0d]: cmd eject reset (disk change clear)", DRIVE_ID);
-`endif
-                end
-                if (sony_ctl == 4'h7) begin
-                    // Start eject: treat as disk removed (best-effort)
-                    // Real hardware would unload; in sim we don't hot-unmount here.
-`ifdef SIMULATION
-                    $display("FLUX_DRIVE[%0d]: cmd eject on (not implemented)", DRIVE_ID);
-`endif
-                end
             end
             prev_lstrb <= lstrb;
 
